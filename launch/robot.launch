@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="sim" value="false" />
+
+  <!-- send urdf to param server -->
+  <param name="robot_description" textfile="$(find motor_control_own)/urdf/motor1.urdf" />
+
+  <include if="$(arg sim)" file="$(find gazebo_ros)/launch/empty_world.launch"/>
+
+  <node if="$(arg sim)" name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -model braccio" />
+
+  <!-- robot state publisher -->
+  <node pkg="robot_state_publisher" type="state_publisher" name="robot_state_publisher">
+      <!--<param name="publish_frequency" type="double" value="50.0" />-->
+      <!--<param name="tf_prefix" type="string" value="" />-->
+      <remap from="joint_states" to="/joint_command"/>
+  </node>
+
+  <node name="module_commander" pkg="joint_state_publisher" type="joint_state_publisher" >
+      <param name="use_gui" value="true"/>
+      <param name="publish_frequency" type="double" value="10.0" />
+      <remap from="joint_states" to="/joint_command"/>
+  </node>
+
+  <node name="rviz" pkg="rviz" type="rviz" required="true"/>
+
+  <node name="canopen_driver" pkg="canopen_motor_node" type="canopen_motor_node" output="screen" clear_params="true">
+     <rosparam command="load" file="$(find motor_control_own)/config/can0.yaml" />
+     <rosparam command="load" file="$(find motor_control_own)/config/arm_driver.yaml" />
+  </node>
+
+  <!-- controllers -->
+  <rosparam command="load" file="$(find motor_control_own)/config/arm_controller.yaml" />
+  
+  <!-- start_controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="controller_manager" args="spawn joint_state_controller joint_1_position_controller" respawn="false" output="screen"/>
+
+</launch>
